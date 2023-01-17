@@ -1,0 +1,106 @@
+@page "/kanban"
+@inject Todo.TodoClient TodoClient
+@inject ILogger<Kanban> Logger;
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+
+<PageTitle>Kanban</PageTitle>
+
+<MudDropContainer T="KanbanEntry" @ref="_dropContainer" Items="@_entries" CanDropClass="mud-border-success"
+    ItemsSelector="@((item, column) => item.TodoEntry.ColumnId.ToString() == column)" ItemDropped="EntryDropped"
+    Class="d-flex flex-row">
+    <ChildContent>
+        @foreach (var section in _sections)
+        {
+            <KanbanColumn Section="section" OnCreateToggled="OnCreateToggled" OnEntryCreated="OnEntryCreated" />
+        }
+    </ChildContent>
+    <ItemRenderer>
+        <KanbanItem Item="context" OnEditToggled="OnEditToggled" OnEntryDeleted="OnEntryDeleted" />
+    </ItemRenderer>
+</MudDropContainer>
+
+@code {
+    private MudDropContainer<KanbanEntry> _dropContainer;
+
+    private List<KanbanSection> _sections = new()
+    {
+        new KanbanSection(0, "To Do"),
+        new KanbanSection(1, "In Process"),
+        new KanbanSection(2, "Done")
+    };
+
+    private List<KanbanEntry> _entries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await AuthService.InvokeRpcAsync<ListTodoRsp>(async () => await TodoClient.ListTodoAsync(new
+        ListTodoReq()));
+        if (response == null)
+            return;
+
+        _entries.AddRange(response.Entries.Select(x => new KanbanEntry(x)).ToList());
+        _dropContainer.Refresh();
+    }
+
+    private void OnCreateToggled(KanbanSection section)
+    {
+        _entries.ForEach(x => { x.EditToggled = false; x.DeleteToggled = false; });
+        _sections.ForEach(x =>
+        {
+            if (x != section)
+                x.NewTaskOpen = false;
+        });
+    }
+
+    private void OnEntryCreated(KanbanEntry entry)
+    {
+        _entries.Add(entry);
+        _dropContainer.Refresh();
+    }
+
+    private void OnEditToggled(KanbanEntry entry)
+    {
+        _sections.ForEach(x => x.NewTaskOpen = false);
+        _entries.ForEach(x =>
+        {
+            if (x != entry)
+                x.EditToggled = false;
+        });
+    }
+
+    private void OnEntryDeleted(KanbanEntry entry)
+    {
+        _entries.Remove(entry);
+        _dropContainer.Refresh();
+    }
+
+    private async void EntryDropped(MudItemDropInfo<KanbanEntry> info)
+    {
+        var entry = info.Item.TodoEntry;
+        if (int.TryParse(info.DropzoneIdentifier, out var parsedColumnId))
+        {
+            if (entry.ColumnId == parsedColumnId)
+                return;
+            entry.ColumnId = parsedColumnId;
+        }
+        else
+        {
+            Logger.LogError("Not able to update todo column.");
+            return;
+        }
+
+        var request = new UpdateTodoReq
+        {
+            Id = entry.Id,
+            Title = entry.Title,
+            Text = entry.Text,
+            ColumnId = entry.ColumnId
+        };
+
+        var response = await AuthService.InvokeRpcAsync<UpdateTodoRsp>(async () => await TodoClient.UpdateTodoAsync(request));
+
+        if (!response.Success)
+            Snackbar.Add("Not able to persist todo edit.", Severity.Error);
+    }
+}

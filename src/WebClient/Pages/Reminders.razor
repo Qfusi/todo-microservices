@@ -1,0 +1,20 @@
+@page "/reminders"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+
+<PageTitle>Reminders</PageTitle>
+
+<MudText Typo="Typo.h2">Reminder</MudText>
+<MudText Typo="Typo.h4">Something will be here sooner or later.</MudText>
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsLoggedIn())
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+    }
+}

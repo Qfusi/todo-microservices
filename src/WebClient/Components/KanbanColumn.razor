@@ -1,0 +1,83 @@
+@inject IAuthService AuthService
+@inject Todo.TodoClient TodoClient
+@inject ISnackbar Snackbar
+
+<MudPaper Elevation="0" Width="500px" MinHeight="750px" Class="ma-1 d-flex flex-column mud-background-gray rounded-lg">
+    <MudDropZone T="KanbanEntry" Identifier="@Section.Id.ToString()" CanDrop="@((item) => true)"
+        Class="mud-height-full flex-grow-1 rounded-lg border-2 border-solid mud-border-lines-default">
+        <MudToolBar DisableGutters="true" Class="pa-4">
+            <MudText Typo="Typo.subtitle1"><b>@Section.Name</b></MudText>
+        </MudToolBar>
+    </MudDropZone>
+    @if (Section.NewTaskOpen)
+    {
+        <MudFocusTrap>
+            <MudPaper Elevation="25" Class="pa-2 pt-6 rounded-lg">
+                <MudTextField @bind-Value="Section.NewTaskTitle" Immediate="true" Variant="Variant.Text" Placeholder="Title"
+                Margin="Margin.Dense" Class="mx-2 mt-n2"></MudTextField>
+                <MudTextField @bind-Value="Section.NewTaskText" T="string" Immediate="true" Variant="Variant.Text"
+                Placeholder="Text" Lines="3" Class="mx-2 mt-n2" />
+                <MudContainer Class="d-flex mt-1">
+                    <MudButton OnClick="@(() => CreateEntry(Section))" Size="Size.Small" Color="Color.Tertiary"
+                    FullWidth="true" Disabled="@(string.IsNullOrEmpty(Section.NewTaskTitle))">Add
+                        Entry</MudButton>
+                    <MudButton
+                    OnClick="@(() => {Section.NewTaskOpen = false; Section.NewTaskTitle = string.Empty; Section.NewTaskText = string.Empty; })"
+                    Size="Size.Small" Color="Color.Secondary" FullWidth="true">Cancel</MudButton>
+                </MudContainer>
+            </MudPaper>
+        </MudFocusTrap>
+    }
+    else
+    {
+        <MudButton OnClick="@(() => ToggleCreate(Section))" StartIcon="@Icons.Material.Rounded.Add" FullWidth="true"
+        Class="rounded-lg py-2">Add Entry</MudButton>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public KanbanSection Section { get; set; }
+
+    [Parameter]
+    public EventCallback<KanbanSection> OnCreateToggled { get; set; }
+
+    [Parameter]
+    public EventCallback<KanbanEntry> OnEntryCreated { get; set; }
+
+    private async void ToggleCreate(KanbanSection section)
+    {
+        section.NewTaskOpen = !section.NewTaskOpen;
+        await OnCreateToggled.InvokeAsync(section);
+    }
+
+    private async void CreateEntry(KanbanSection section)
+    {
+        var request = new CreateTodoReq
+        {
+            Title = section.NewTaskTitle,
+            Text = section.NewTaskText ?? string.Empty,
+            ColumnId = section.Id
+        };
+
+        section.NewTaskTitle = string.Empty;
+        section.NewTaskText = string.Empty;
+        section.NewTaskOpen = false;
+
+        var response = await AuthService.InvokeRpcAsync<CreateTodoRsp>(async () => await TodoClient.CreateTodoAsync(request));
+
+        if (response == null || response?.Id == -1)
+            Snackbar.Add("Not able to create todo entry.", Severity.Error);
+        else
+        {
+            var createdEntry = new KanbanEntry(new TodoEntry
+            {
+                Id = response.Id,
+                Title = request.Title,
+                Text = request.Text,
+                ColumnId = request.ColumnId
+            });
+            await OnEntryCreated.InvokeAsync(createdEntry);
+        }
+    }
+}

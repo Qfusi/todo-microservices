@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option csharp_namespace = "GrpcUser";
+
+service User {
+  rpc Login (LoginReq) returns (LoginRsp) {}
+  rpc Register (RegisterReq) returns (RegisterRsp) {}
+  rpc VerifyAuthenticated (VerifyReq) returns (VerifyRsp) {}
+}
+
+message LoginReq {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginRsp {
+  string jwt_token = 1;
+  string expiration = 2;
+}
+
+message RegisterReq {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+}
+
+message RegisterRsp {
+  bool success = 1;
+}
+
+message VerifyReq {
+}
+
+message VerifyRsp {
+}

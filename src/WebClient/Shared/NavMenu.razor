@@ -1,0 +1,24 @@
+﻿@inject IAuthService AuthService
+
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.Home">Home</MudNavLink>
+    @if (AuthService.IsLoggedIn())
+    {
+        <MudNavLink Href="kanban" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.FactCheck">Kanban</MudNavLink>
+        <MudNavLink Href="reminders" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.AddAlert">Reminders
+        </MudNavLink>
+    }
+    else
+    {
+        <MudNavLink Href="registration" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Rounded.List">Registration
+        </MudNavLink>
+    }
+</MudNavMenu>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        AuthService.LoginStateChangeOccurred += StateHasChanged;
+    }
+}

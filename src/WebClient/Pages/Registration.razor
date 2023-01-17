@@ -1,0 +1,90 @@
+@page "/registration"
+@using FluentValidation
+@inject User.UserClient UserClient
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+
+<PageTitle>Registration</PageTitle>
+
+<MudCard>
+    <MudForm Model="@_model" @ref="@_form" Validation="@(_registerValidator.ValidateValue)" ValidationDelay="0">
+        <MudCardContent>
+            <MudTextField @bind-Value="_model.Username" For="@(() => _model.Username)" Label="Username" />
+            <MudTextField @bind-Value="_model.Email" For="@(() => _model.Email)" Label="Email" />
+            <MudTextField @bind-Value="_model.password" For="@(() => _model.password)" Label="Password"
+                HelperText="Choose a strong password" InputType="InputType.Password" />
+            <MudTextField @bind-Value="_model.passwordConfirmation" For="@(() => _model.passwordConfirmation)"
+                Label="Password" HelperText="Confirm entered password" InputType="InputType.Password" />
+        </MudCardContent>
+    </MudForm>
+    <MudCardActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto"
+            OnClick="@(async () => await Submit())">Register</MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    private MudForm _form;
+    private RegisterWrapperModel _model = new RegisterWrapperModel();
+    private RegisterModelFluentValidator _registerValidator = new RegisterModelFluentValidator();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+
+        if (_form.IsValid)
+        {
+            var response = await AuthService.InvokeRpcAsync<RegisterRsp>(async () => await UserClient.RegisterAsync(new RegisterReq
+            {
+                Username = _model.Username,
+                Email = _model.Email,
+                Password = _model.password
+            }));
+
+            if (!response.Success)
+            {
+                Snackbar.Add("Not able to register user.", MudBlazor.Severity.Error);
+                return;
+            }
+
+            await AuthService.LoginAsync(new LoginReq
+            {
+                Username = _model.Username,
+                Password = _model.password
+            });
+        }
+    }
+
+    public class RegisterModelFluentValidator : AbstractValidator<RegisterWrapperModel>
+    {
+        public RegisterModelFluentValidator()
+        {
+            RuleFor(x => x.Username).NotEmpty().Length(1, 20);
+
+            RuleFor(x => x.Email)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty()
+            .EmailAddress();
+
+            RuleFor(x => x.password).NotEmpty().Length(4, 20).Matches(@"[A-Z]").Matches(@"[a-z]").Matches(@"[0-9]");
+            RuleFor(x => x.passwordConfirmation).Equal(x => x.password).WithMessage(x => "Must match previously entered password");
+        }
+
+        public Func<object, string, Task<IEnumerable<string>>> ValidateValue => async (model, propertyName) =>
+        {
+            var result = await ValidateAsync(ValidationContext<RegisterWrapperModel>.CreateWithOptions((RegisterWrapperModel)model,
+    x => x.IncludeProperties(propertyName)));
+            if (result.IsValid)
+                return Array.Empty<string>();
+            return result.Errors.Select(e => e.ErrorMessage);
+        };
+    }
+
+    public class RegisterWrapperModel
+    {
+        public string Username { get; set; }
+        public string Email { get; set; }
+        public string password { get; set; }
+        public string passwordConfirmation { get; set; }
+    }
+}

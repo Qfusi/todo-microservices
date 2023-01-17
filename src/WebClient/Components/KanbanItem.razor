@@ -1,0 +1,115 @@
+@inject IAuthService AuthService
+@inject Todo.TodoClient TodoClient
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="25" Class="rounded-lg my-2">
+    <MudCardContent Class="pa-0">
+        @if (Item.EditToggled)
+        {
+            <MudCardHeader>
+                @if (Item.DeleteToggled)
+                {
+                    <MudButton OnClick="@(() => DeleteEntry(Item))" Size="Size.Small" Color="Color.Secondary"
+                        Class="pa-0">Confirm
+                    </MudButton>
+                }
+                else
+                {
+                    <MudIconButton OnClick="@(() => Item.DeleteToggled = true)" Icon="@Icons.Material.Rounded.Delete"
+                        Size="Size.Small" Class="pa-2" />
+                }
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTextField @bind-Value="Item.EditedTitle" Immediate="true" Variant="Variant.Text" Placeholder="Title" Margin="Margin.Dense"
+                    Class="mx-2 mt-n2" />
+                <MudTextField @bind-Value="Item.EditedText"  Immediate="true" Variant="Variant.Text" Placeholder="Text" Lines="3"
+                    Class="mx-2 mt-n2" />
+            </MudCardContent>
+            <MudCardActions>
+                <MudContainer Class="d-flex mt-1">
+                        <MudButton OnClick="@(() => EditEntry(Item))" Size="Size.Small" Disabled="EvaluateEdit(Item)" Color="Color.Tertiary" FullWidth="true">Update Entry</MudButton>
+                        <MudButton OnClick="@(() => {Item.EditToggled = false; Item.DeleteToggled = false;})" Size="Size.Small"
+                            Color="Color.Secondary" FullWidth="true">Cancel</MudButton>
+                </MudContainer>
+            </MudCardActions>
+        }
+        else
+        {
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.body1">@Item.TodoEntry.Title</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton OnClick="@(() => ToggleEdit(Item))" Icon="@Icons.Material.Rounded.Edit"
+                        Size="Size.Small" Class="pa-2" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body2">@Item.TodoEntry.Text</MudText>
+            </MudCardContent>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public KanbanEntry Item { get; set; }
+
+    [Parameter]
+    public EventCallback<KanbanEntry> OnEditToggled { get; set; }
+
+    [Parameter]
+    public EventCallback OnEntryEdited { get; set; }
+
+    [Parameter]
+    public EventCallback<KanbanEntry> OnEntryDeleted { get; set; }
+
+    private async void ToggleEdit(KanbanEntry entry)
+    {
+        entry.EditedTitle = entry.TodoEntry.Title;
+        entry.EditedText = entry.TodoEntry.Text;
+        entry.EditToggled = true;
+        await OnEditToggled.InvokeAsync(entry);
+    }
+
+    private async void EditEntry(KanbanEntry entry)
+    {
+        entry.TodoEntry.Title = entry.EditedTitle;
+        entry.TodoEntry.Text = entry.EditedText;
+        entry.DeleteToggled = false;
+        entry.EditToggled = false;
+
+        var request = new UpdateTodoReq
+        {
+            Id = entry.TodoEntry.Id,
+            Title = entry.EditedTitle,
+            Text = entry.EditedText,
+            ColumnId = entry.TodoEntry.ColumnId
+        };
+
+        var response = await AuthService.InvokeRpcAsync<UpdateTodoRsp>(async () => await TodoClient.UpdateTodoAsync(request));
+
+        if (!response.Success)
+            Snackbar.Add("Not able to persist todo edit.", Severity.Error);
+        
+        await OnEntryEdited.InvokeAsync();
+    }
+
+    private async void DeleteEntry(KanbanEntry entry)
+    {
+        var request = new DeleteTodoReq
+        {
+            Id = entry.TodoEntry.Id
+        };
+
+        await OnEntryDeleted.InvokeAsync(entry);
+
+        var response = await AuthService.InvokeRpcAsync<DeleteTodoRsp>(async () => await TodoClient.DeleteTodoAsync(request));
+
+        if (!response.Success)
+            Snackbar.Add("Not able to persist todo deletion.", Severity.Error);
+    }
+
+    private bool EvaluateEdit(KanbanEntry entry)
+        => (entry.EditedTitle == entry.TodoEntry.Title && entry.EditedText == entry.TodoEntry.Text);
+}

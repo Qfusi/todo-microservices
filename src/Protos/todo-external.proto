@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option csharp_namespace = "GrpcTodoExternal";
+
+import "google/protobuf/timestamp.proto";
+
+service Todo {
+  rpc CreateTodo (CreateTodoReq) returns (CreateTodoRsp) {}
+  rpc GetTodo (GetTodoReq) returns (GetTodoRsp) {}
+  rpc DeleteTodo (DeleteTodoReq) returns (DeleteTodoRsp) {}
+  rpc UpdateTodo (UpdateTodoReq) returns (UpdateTodoRsp) {}
+  rpc ListTodo (ListTodoReq) returns (ListTodoRsp) {}
+}
+
+message TodoEntry {
+	int32 id = 1;
+	string title = 2;
+	optional string text = 3;
+  int32 columnId = 4;
+	google.protobuf.Timestamp created_at = 5;
+	optional google.protobuf.Timestamp updated_at = 6;
+}
+
+message CreateTodoReq {
+  string title = 1;
+  optional string text = 2;
+  int32 columnId = 3;
+}
+
+message CreateTodoRsp {
+  int32 id = 1;
+}
+
+message GetTodoReq {
+  int32 id = 1;
+}
+
+message GetTodoRsp {
+  TodoEntry entry = 1;
+}
+
+message DeleteTodoReq {
+  int32 id = 1;
+}
+
+message DeleteTodoRsp {
+  bool success = 1;
+}
+
+message UpdateTodoReq {
+  int32 id = 1;
+	string title = 2;
+	string text = 3;
+  int32 columnId = 4;
+}
+
+message UpdateTodoRsp {
+  bool success = 1;
+}
+
+message ListTodoReq {
+}
+
+message ListTodoRsp {
+  repeated TodoEntry entries = 1;
+}

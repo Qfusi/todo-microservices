@@ -1,0 +1,38 @@
+@inject User.UserClient UserClient
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+
+<EditForm Model="@_model" OnValidSubmit="Submit">
+    <MudDialog DefaultFocus="DefaultFocus.FirstChild">
+        <DialogContent>
+            <DataAnnotationsValidator />
+            <MudTextField Label="Username" @bind-Value="_model.Username" For="@(() => _model.Username)"
+                Required="true" />
+            <MudTextField Label="Password" Class="mt-3" @bind-Value="_model.Password" For="@(() => _model.Password)"
+                InputType="InputType.Password" Required="true" />
+        </DialogContent>
+        <DialogActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+            <MudButton Variant="Variant.Filled" OnClick="Cancel">Cancel</MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    protected MudDialogInstance MudDialog { get; set; }
+    private LoginReq _model = new LoginReq();
+    private async void Submit()
+    {
+        var success = await AuthService.LoginAsync(_model);
+        if (success)
+        {
+            Snackbar.Add("Logged in successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+            Snackbar.Add("Incorrect login", Severity.Error);
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}
