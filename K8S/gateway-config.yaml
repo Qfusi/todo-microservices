@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+data:
+  todoservice-url: http://todo-service
+  userservice-url: http://user-service

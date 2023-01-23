@@ -15,8 +15,6 @@ public static class RegisterGrpcServices
         services.AddGrpcClient<TodoClient>(o =>
         {
             var address = configuration["GatewayGrpcAddress"];
-            if (!address.StartsWith("http"))
-                address = $"http://{address}";
             o.Address = new Uri(address!);
             o.ChannelOptionsActions.Add(opt => opt.UnsafeUseInsecureChannelCallCredentials = true);
         }).AddInterceptor<LoggingInterceptor>()
@@ -33,8 +31,6 @@ public static class RegisterGrpcServices
         services.AddGrpcClient<UserClient>(o =>
         {
             var address = configuration["GatewayGrpcAddress"];
-            if (!address.StartsWith("http"))
-                address = $"http://{address}";
             o.Address = new Uri(address!);
             o.ChannelOptionsActions.Add(opt => opt.UnsafeUseInsecureChannelCallCredentials = true);
         }).ConfigurePrimaryHttpMessageHandler(() =>
